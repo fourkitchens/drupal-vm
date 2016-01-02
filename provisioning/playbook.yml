@@ -54,7 +54,8 @@
     - { role: geerlingguy.security, when: extra_security_enabled }
 
     # Additional consditional roles for Four Kitchens dev server
-    - { role: fourkitchens.user-www-sites, when: 4kdev_enabled}
+    - { role: ansible-role-apache-wild-www, when: 4kdev_enabled}
+    - { role: ansible-role-users-github-team, when: 4kdev_enabled}
 
   tasks:
     - name: Check if Drupal is already set up.
