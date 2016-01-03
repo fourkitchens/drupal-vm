@@ -1,0 +1,27 @@
+# db_name: Database name.
+#   eg: fkblog
+# db_user: Database user.
+#   eg: imapotato
+# db_pass: database password.
+#   eg: secretsauce
+#
+- hosts: all
+  sudo: yes
+
+  vars_prompt:
+    - name: db_name
+      prompt: "MySQL database name?"
+      private: no
+    - name: db_user
+      prompt: "MySQL database username?"
+      private: no
+    - name: db_pass
+      prompt: "MySQL database password?"
+      private: no
+  tasks:
+
+    - name: Create MySQL db
+      action: mysql_db name={{ db_name }}
+
+    - name: Create MySQL user
+      action: mysql_user name={{ db_user }} password={{ db_pass }} priv={{ db_name }}.*:ALL/*.*:SELECT

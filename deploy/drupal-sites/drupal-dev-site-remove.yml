@@ -1,0 +1,41 @@
+---
+##
+# Remove a dev Drupal site on the server.
+#
+# site_name: The machine name of the site.
+#  eg: client1
+# user_name: The user for whom the site is created.
+# db_name: The name of the database to create.
+# db_user: The username of the db user.
+#
+- hosts: all
+  sudo: yes
+
+  vars_prompt:
+    - name: user_name
+      prompt: "What is the username that has has the site you want to delete?"
+      default: "vagrant"
+      private: no
+    - name: site_name
+      prompt: "What is the site name you want to delete ?"
+      private: no
+    - name: db_name
+      prompt: "What is the MySQL database you want to delete named?"
+      private: no
+    - name: db_user
+      prompt: "What is the MySQL database username you want to delete?"
+      private: no
+
+  tasks:
+
+    - name: Simple test to make sure the user and site exists
+      action: command test -d /home/{{ user_name }}/www/{{ site_name }} creates=/home/{{ user_name }}/www/{{ site_name }}
+
+    - name: Delete the site folder
+      action: file state=absent path=/home/{{ user_name }}/www/{{ site_name }}
+
+    - name: Remove MySQL db
+      action: mysql_db name={{ db_name }} state=absent
+
+    - name: Remove MySQL user
+      action: mysql_user name={{ db_user }} state=absent

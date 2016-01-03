@@ -1,0 +1,73 @@
+---
+##
+# Create a new 'trunk' Drupal site on the server.
+#
+# On the commandline:
+#   sudo ansible-playbook -c local --extra-vars="repo=$repo domain_name=$domain_name db_name=$db_name db_user=$db_user db_pass=$db_pass" drupal-trunk-site-deploy.yml
+#
+# repo: The github repository
+#   eg: git@github.com:fourkitchens/trainingwheels-drupal-files-example.git
+# domain_name: The domain name of the site.
+#  eg: example.webchef2.com
+# db_name: The name of the database to create.
+# db_user: The username of the db user.
+# db_pass: The password of the db user.
+#
+- hosts: all
+  sudo: yes
+
+  vars_prompt:
+    - name: domain_name
+      prompt: "Site name? i.e. http://domain_name.webchefs.org"
+      private: no
+    - name: repo
+      prompt: "Git Repo to checkout?"
+      private: no
+    - name: branch
+      prompt: "Git branch to checkout?"
+      default: master
+      private: no
+    - name: db_name
+      prompt: "MySQL database name?"
+      private: no
+    - name: db_user
+      prompt: "MySQL database username?"
+      private: no
+    - name: db_pass
+      prompt: "MySQL database password?"
+      private: no
+
+  tasks:
+
+    - name: Checkout the git repo
+      action: git repo={{repo}} dest=/var/www/vhosts/{{domain_name}}
+              version={{branch}}
+              accept_hostkey=True
+              recursive=no
+              depth=1
+      sudo: yes
+      sudo_user: bender
+
+    - name: Create sites/default/files if it doesn't exist ensure it's owned by the www-data user.
+      action: file path=/var/www/vhosts/{{ domain_name }}/sites/default/files state=directory owner=www-data group=www-data
+
+    - name: Make www-data the owner of all sites/default/files
+      action: file path=/var/www/vhosts/{{ domain_name }}/sites/default/files state=directory owner=www-data group=www-data
+
+    - name: Make a vhost config file.
+      action: template src=etc-apache2-sites-available-template.j2 dest=/etc/apache2/sites-available/{{ domain_name }}.conf
+
+    - name: Enable our new site
+      action: command a2ensite {{ domain_name }}.conf creates=/etc/apache2/sites-enabled/{{ domain_name }}.conf
+
+    - name: Create MySQL db
+      action: mysql_db name={{ db_name }}
+
+    - name: Create MySQL user
+      action: mysql_user name={{ db_user }} password={{db_pass}} priv={{ db_name }}.*:ALL
+
+    - name: Add a drush alias for the site
+      action: template src=./etc-drush-alias-template dest=/etc/drush/{{ domain_name }}.alias.drushrc.php
+
+    - name: Restart apache2
+      action: service name=apache2 state=restarted

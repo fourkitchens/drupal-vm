@@ -1,0 +1,63 @@
+---
+##
+# Create a new dev Drupal site on the server.
+#
+# On the commandline:
+#   sudo ansible-playbook -c local --extra-vars="repo=$repo domain_name=$domain_name db_name=$db_name db_user=$db_user db_pass=$db_pass" drupal-trunk-site-deploy.yml
+#
+# repo: The github repository
+#   eg: git@github.com:fourkitchens/trainingwheels-drupal-files-example.git
+# site_name: The machine name of the site.
+#  eg: client1
+# user_name: The user for whom the site is created.
+# db_name: The name of the database to create.
+# db_user: The username of the db user.
+# db_pass: The password of the db user.
+#
+- hosts: all
+  sudo: yes
+
+  vars_prompt:
+    - name: user_name
+      prompt: "Username the site will be created under"
+      default: "vagrant"
+      private: no
+    - name: site_name
+      prompt: "Site name? i.e. www/site_name"
+      private: no
+    - name: repo
+      prompt: "Git Repo to checkout?"
+      private: no
+    - name: branch
+      prompt: "Git branch to checkout?"
+      default: master
+      private: no
+    - name: db_name
+      prompt: "MySQL database name?"
+      private: no
+    - name: db_user
+      prompt: "MySQL database username?"
+      private: no
+    - name: db_pass
+      prompt: "MySQL database password?"
+      private: no
+
+  tasks:
+    - name: Simple test to make sure the user exists
+      action: command test -d /home/{{ user_name }} creates=/home/{{ user_name }}
+
+    - name: Checkout the git repo
+      action: git repo={{repo}} dest=/home/{{ user_name }}/www/{{site_name}}
+              version={{branch}}
+              accept_hostkey=True
+              recursive=no
+              depth=1
+
+    - name: Let current user own the repo.
+      action: "command chown -R {{ user_name }}: /home/{{ user_name }}/www/{{ site_name }}"
+
+    - name: Create MySQL db
+      action: mysql_db name={{ db_name }}
+
+    - name: Create MySQL user
+      action: mysql_user name={{ db_user }} password={{ db_pass }} priv={{ db_name }}.*:ALL/*.*:SELECT
