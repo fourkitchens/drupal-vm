@@ -1,9 +1,7 @@
 ---
 ##
-# Add a new solr core.
+# Delete a solr core.
 #
-# repo: The github repository
-#   eg: git@github.com:fourkitchens/trainingwheels-drupal-files-example.git
 # core_name: The core name.
 #  eg: beautyhammer
 #
@@ -14,12 +12,11 @@
     core_name: "What's the name of the core you want to delete?"
 
   tasks:
+    - name: Delete the core using the REST interface
+      action: command curl "http://localhost:8983/solr/admin/cores?action=UNLOAD&core={{ core_name }}&deleteInstanceDir=true"
 
-    - name: Delete from the core file.
-      action: lineinfile dest=/usr/share/tomcat6/solr/solr.xml regexp="<core name=\"{{ core_name }}\" instanceDir=\"{{ core_name }}\" />" state=absent
-
-    - name: Restart tomcat
-      action: service name=tomcat6 state=restarted
+    - name: Restart Solr.
+      action: service name=solr state=restarted sleep=5
 
     - name: Remove the core
-      action: file path=/usr/share/tomcat6/solr/{{ core_name }} state=absent
+      action: file path=/var/solr/{{ core_name }} state=absent
