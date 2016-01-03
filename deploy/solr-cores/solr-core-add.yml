@@ -9,7 +9,9 @@
   sudo: yes
 
   vars_prompt:
-    core_name: "Whats the name of the core you'd like to build? (ex: elccs_dd, dor2_dd)"
+    - name: core_name
+      prompt: "Whats the name of the core you'd like to build? (ex: elccs_dd, dor2_dd)"
+      private: no
 
   tasks:
 

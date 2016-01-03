@@ -9,7 +9,9 @@
   sudo: yes
 
   vars_prompt:
-    core_name: "What's the name of the core you want to delete?"
+    - name: core_name
+      prompt: "What's the name of the core you want to delete?"
+      private: no
 
   tasks:
     - name: Delete the core using the REST interface
