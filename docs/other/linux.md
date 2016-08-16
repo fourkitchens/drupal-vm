@@ -29,6 +29,14 @@ In this case, you need to install your system's appropriate kernel module, and y
 
 Periodically, when you upgrade your system's Linux kernel, you might need to run steps 2 and 3 above again, or you can uninstall and reinstall VirtualBox (e.g. `sudo dnf remove VirtualBox && sudo dnf install VirtualBox`).
 
+### Arch Linux
+
+Arch Linux uses Python 3 as the default while Ansible requires Python 2. To get around parse errors you need to specify that the `python2` binary should be used instead of the default `python`. Add the following to your `config.yml`:
+
+```
+ansible_python_interpreter: "/usr/bin/env python2"
+```
+
 ## Synced Folders
 
 Most issues have to do synced folders. These are the most common ones:
@@ -57,7 +65,7 @@ If you get this message, then it's likely that either NFS isn't running correctl
 
   1. On Ubuntu, if you get a message like `It appears your machine doesn't support NFS`, run `sudo apt-get install -y nfs-server`.
   2. Install the `vagrant-vbguest` plugin, which will make sure you are running the latest version of the VirualBox Guest Additions inside the VM (this can solve many different problems!).
-  3. Make sure the `vboxnet` interfaces are not being blocked by your system firewall. For Fedora (and many flavors of Linux), check out this guide for more: [Get Vagrant's NFS working under Fedora 20](http://blog.bak1an.site/blog/2014/03/23/fedora-vagrant-nfs/).
+  3. Make sure the `vboxnet` interfaces are not being blocked by your system firewall. For Fedora (and many flavors of Linux), check out this guide for more: [Get Vagrant's NFS working under Fedora 20](https://web.archive.org/web/20150706105420/http://blog.bak1an.so/blog/2014/03/23/fedora-vagrant-nfs/).
   4. Add `mount_options: ['vers=3']` to your synced folder definition in config.yml after the other options like `local_path`, `destination`, and `type`.
 
 After attempting any of the above fixes, run `vagrant reload --provision` to restart the VM and attempt mounting the synced folder again, or `vagrant destroy -f && vagrant up` to rebuild the VM from scratch.

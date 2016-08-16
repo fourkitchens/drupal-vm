@@ -1,23 +1,47 @@
-You can share folders between your host computer and the VM in a variety of ways; the most commonly-used method is an NFS share. If you use Windows and encounter any problems with NFS, try switching to `smb`. The `example.config.yml` file contains an example `nfs` share that would sync the folder `~/Sites/drupalvm` on your host into the `/var/www` folder on Drupal VM.
+You can share folders between your host computer and the VM in a variety of ways; the most commonly-used method is an NFS share. If you use Windows and encounter any problems with NFS, try switching to `smb`. The `default.config.yml` file contains an example `nfs` share that would sync the entire drupal-vm directory (configured as the relative path `.`) on your host into the `/var/www/drupalvm` folder on Virtual Machine.
 
 If you want to use a different synced folder method (e.g. `smb`), you can change `type` to:
 
 ```yaml
 vagrant_synced_folders:
-  - local_path: ~/Sites/drupalvm
-    destination: /var/www
-    id: drupal
+  - local_path: .
+    destination: /var/www/drupalvm
     type: smb
+    create: true
 ```
 
-You can add as many synced folders as you'd like, and you can configure [any type of share](https://docs.vagrantup.com/v2/synced-folders/index.html) supported by Vagrant; just add another item to the list of `vagrant_synced_folders`.
+You can add as many synced folders as you'd like, and you can configure [any type of share](https://www.vagrantup.com/docs/synced-folders/index.html) supported by Vagrant; just add another item to the list of `vagrant_synced_folders`.
+
+## Options
+
+The synced folder options exposed are `type`, `excluded_paths` (when using rsync), `id`, `create` and `mount_options`. Besides these there are some sane defaults set when using rsync. For example all files synced with rsync will be writable by everyone, thus allowing the web server to create files.
+
+### Overriding defaults
+
+If you feel the need to fine-tune some of the options not exposed, the entire options hash passed to Vagrant can be overriden using `options_override`.
+
+The merge of the default options and `options_override` is shallow, so you can use it to remove flags from eg. `rsync__args`.
+
+One scenario where this might be useful is when you are moving generated code from the virtual machine back to your local machine and you want the files to have appropriate permissions instead of the default 666/777.
+
+```yaml
+options_override:
+  # Disable the default recursive chown so that the files/ folder won't be affected
+  rsync__chown: false
+  rsync__args: [
+    "--verbose", "--archive", "--delete",
+    "--chmod=gu=rwX,o=rX", # 664 for files, 775 for directories
+    "--owner", "--group", # required for the following command
+    "--usermap=*:vagrant", "--groupmap=*:www-data"
+  ]
+```
 
 ## Synced Folder Performance
 
 Using different synced folder mechanisms can have a dramatic impact on your Drupal site's performance. Please read through the following blog posts for a thorough overview of synced folder performance:
 
   - [Comparing filesystem performance in Virtual Machines](http://mitchellh.com/comparing-filesystem-performance-in-virtual-machines)
-  - [NFS, rsync, and shared folder performance in Vagrant VMs](http://www.midwesternmac.com/blogs/jeff-geerling/nfs-rsync-and-shared-folder)
+  - [NFS, rsync, and shared folder performance in Vagrant VMs](http://www.jeffgeerling.com/blogs/jeff-geerling/nfs-rsync-and-shared-folder)
 
 Generally speaking:
 
@@ -30,10 +54,10 @@ If you are using rsync, it is advised to exclude certain directories so that the
 
 ```yaml
 vagrant_synced_folders:
-  - local_path: ~/Sites/drupalvm/drupal
-    destination: /var/www
-    id: drupal
+  - local_path: .
+    destination: /var/www/drupalvm
     type: rsync
+    create: true
     excluded_paths:
       - drupal/private
       - drupal/public/.git
@@ -49,13 +73,12 @@ There are a number of issues people encounter with synced folders from time to t
 
 ### Using Native Synced Folders
 
-You can use a native synced folder, which should work pretty flawlessly on any platform, but with a potential serious performance downside (compared to other synced folder methods). Just set `type` to `""`, and you can even put the synced folder inside the drupal-vm folder using a relative path, like:
+You can use a native synced folder, which should work pretty flawlessly on any platform, but with a potential serious performance downside (compared to other synced folder methods). Just set `type` to `""`.
 
 ```yaml
 vagrant_synced_folders:
-  - local_path: docroot
+  - local_path: .
     destination: /var/www/docroot
-    id: drupal
     type: ""
     create: true
 ```
@@ -80,11 +103,29 @@ mount_options: ["dmode=775,fmode=664"]
 
 See [this issue](https://github.com/geerlingguy/drupal-vm/issues/66) for more details.
 
-### VirtualBox Symbolic Links
+### Using [`vagrant-bindfs`](https://github.com/gael-ian/vagrant-bindfs) to work around permissions-related errors
 
-When using native VirtualBox shares, VirtualBox does not allow guest VMs to create symbolic links on synced folders for security reasons. On CentOS this prevents apache from installing since it will try to make a symlink inside `/var/www/` You can change the Drupal synced_folder to `/var/www/drupal` and the `drupal_core_path` to `/var/www/drupal/docroot` to work around this.
+If you're using NFS synced folders the mounted directories will use the same numeric permissions on the guest VM as on the host OS. If you're on OSX for instance, your files within the VM would be owned by 501:20. To correct these permissions you can use the [`vagrant-bindfs` plugin](https://github.com/gael-ian/vagrant-bindfs) to mount your NFS folders to a temporary location and then re-mount them to the actual destination with the correct ownership.
 
-There are many other potential [solutions](https://www.google.com/search?q=SharedFoldersEnableSymlinksCreate) available on the Internet.
+First install the plugin with `vagrant plugin install vagrant-bindfs` and then add a `Vagrantfile.local` with the following:
+
+```rb
+vconfig['vagrant_synced_folders'].each do |synced_folder|
+  case synced_folder['type']
+  when "nfs"
+    guest_path = synced_folder['destination']
+    host_path = File.expand_path(synced_folder['local_path'])
+    config.vm.synced_folders[guest_path][:guestpath] = "/var/nfs#{host_path}"
+    config.bindfs.bind_folder "/var/nfs#{host_path}", guest_path,
+      u: 'vagrant',
+      g: 'www-data',
+      perms: 'u=rwX:g=rwD',
+      o: 'nonempty'
+    config.nfs.map_uid = Process.uid
+    config.nfs.map_gid = Process.gid
+  end
+end
+```
 
 ### Other NFS-related errors
 
