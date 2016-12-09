@@ -7,6 +7,12 @@
     - ../default.config.yml
 
   pre_tasks:
+    - name: Verify Ansible meets Drupal VM's version requirements.
+      assert:
+        that: "ansible_version.full | version_compare(drupalvm_ansible_version_min, '>=')"
+        msg: >
+          "You must update Ansible to at least {{ drupalvm_ansible_version_min }} to use this version of Drupal VM."
+
     - name: Define config_dir.
       set_fact:
         config_dir: "{{ playbook_dir }}/.."
@@ -16,6 +22,7 @@
       with_fileglob:
         - "{{ config_dir }}/config.yml"
         - "{{ config_dir }}/local.config.yml"
+        - "{{ config_dir }}/{{ lookup('env', 'DRUPALVM_ENV')|default(drupalvm_env, true)|default(ansible_env.DRUPALVM_ENV)|default(omit) }}.config.yml"
 
     - include: tasks/init-debian.yml
       when: ansible_os_family == 'Debian'
@@ -45,15 +52,17 @@
     - { role: geerlingguy.apache, when: drupalvm_webserver == 'apache' }
     - { role: geerlingguy.apache-php-fpm, when: drupalvm_webserver == 'apache' }
     - { role: geerlingguy.nginx, when: drupalvm_webserver == 'nginx' }
-    - geerlingguy.mysql
     - geerlingguy.php
     - geerlingguy.php-pecl
-    - geerlingguy.php-mysql
     - geerlingguy.composer
-    - geerlingguy.drush
+    - { role: geerlingguy.mysql, when: drupalvm_database == 'mysql' }
+    - { role: geerlingguy.php-mysql, when: drupalvm_database == 'mysql' }
+    - { role: geerlingguy.postgresql, when: drupalvm_database == 'pgsql' }
+    - { role: geerlingguy.php-pgsql, when: drupalvm_database == 'pgsql' }
 
     # Conditionally-installed roles.
     - { role: geerlingguy.drupal-console, when: 'drupal_major_version > 7 and "drupalconsole" in installed_extras' }
+    - { role: geerlingguy.drush, when: '"drush" in installed_extras' }
     - { role: geerlingguy.memcached, when: '"memcached" in installed_extras' }
     - { role: geerlingguy.php-memcached, when: '"memcached" in installed_extras' }
     - { role: geerlingguy.php-xdebug, when: '"xdebug" in installed_extras' }
@@ -68,7 +77,12 @@
     - { role: geerlingguy.redis, when: '"redis" in installed_extras' }
     - { role: geerlingguy.php-redis, when: '"redis" in installed_extras' }
     - { role: geerlingguy.ruby, when: '"ruby" in installed_extras' }
-    - { role: geerlingguy.java, when: '"solr" in installed_extras or "selenium" in installed_extras or "elasticsearch" in installed_extras'}
+    - role: geerlingguy.java
+      when: >
+        "java" in installed_extras or
+        "solr" in installed_extras or
+        "selenium" in installed_extras or
+        "elasticsearch" in installed_extras
     - { role: arknoll.selenium, when: '"selenium" in installed_extras' }
     - { role: geerlingguy.solr, when: '"solr" in installed_extras' }
     - { role: geerlingguy.elasticsearch, when: '"elasticsearch" in installed_extras' }
@@ -95,7 +109,7 @@
     - include: tasks/extras.yml
     - include: tasks/www.yml
     - include: tasks/apparmor.yml
-      when: ansible_os_family == 'Debian'
+      when: ansible_os_family == 'Debian' and drupalvm_database == 'mysql'
 
     # Build makefile if configured.
     - include: tasks/build-makefile.yml
@@ -108,6 +122,16 @@
     # Build a composer project if configured.
     - include: tasks/build-composer-project.yml
       when: build_composer_project
+
+    - name: Check if a project specific Drush binary exists.
+      stat: "path={{ drupal_composer_install_dir }}/vendor/drush/drush/drush"
+      register: drush_vendor_bin
+      ignore_errors: true
+
+    - name: Use project specific Drush if available.
+      set_fact:
+        drush_path: "{{ drupal_composer_install_dir }}/vendor/drush/drush/drush"
+      when: drush_vendor_bin.stat.exists
 
     # Install site if configured.
     - include: tasks/install-site.yml

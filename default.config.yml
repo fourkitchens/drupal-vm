@@ -29,11 +29,21 @@ vagrant_synced_folders:
     create: true
 
 # Memory and CPU to use for this VM.
-vagrant_memory: 1024
-vagrant_cpus: 2
+vagrant_memory: 2048
+vagrant_cpus: 1
+
+# Minimum required versions.
+drupalvm_vagrant_version_min: '1.8.6'
+drupalvm_ansible_version_min: '2.2'
+
+# Force use of ansible_local provisioner, even if Ansible is installed on host.
+force_ansible_local: false
 
 # The web server software to use. Can be either 'apache' or 'nginx'.
 drupalvm_webserver: apache
+
+# The database system to use. Can be either 'mysql' or 'pgsql'.
+drupalvm_database: mysql
 
 # Set this to 'false' if you are using a different site deployment strategy and
 # would like to configure 'vagrant_synced_folders' and 'apache_vhosts' manually.
@@ -47,7 +57,7 @@ build_composer: false
 drupal_composer_path: "{{ config_dir }}/drupal.composer.json"
 drupal_composer_install_dir: "/var/www/drupalvm/drupal"
 drupal_composer_dependencies:
-  - "drupal/devel:8.*"
+  - "drupal/devel:1.x-dev"
 
 # Set this to 'true' and 'build_makefile', 'build_composer' to 'false' if you
 # are using Composer's create-project as a site deployment strategy.
@@ -61,9 +71,9 @@ install_site: true
 
 # Required Drupal settings.
 drupal_core_path: "{{ drupal_composer_install_dir }}/web"
-drupal_mysql_user: drupal
-drupal_mysql_password: drupal
-drupal_mysql_database: drupal
+drupal_db_user: drupal
+drupal_db_password: drupal
+drupal_db_name: drupal
 
 # Settings for installing a Drupal site if 'install_site:' is 'true'.
 drupal_major_version: 8
@@ -80,11 +90,9 @@ drupal_site_install_extra_args: []
 # Cron jobs are added to the vagrant user's crontab. Keys include name
 # (required), minute, hour, day, weekday, month, job (required), and state.
 drupalvm_cron_jobs: []
-  # - {
-  #   name: "Drupal Cron",
-  #   minute: "*/30",
+  # - name: "Drupal Cron"
+  #   minute: "*/30"
   #   job: "drush -r {{ drupal_core_path }} core-cron"
-  # }
 
 # Drupal VM automatically creates a drush alias file in your ~/.drush folder if
 # this variable is 'true'.
@@ -156,26 +164,37 @@ nginx_hosts:
 nginx_remove_default_vhost: true
 nginx_ppa_use: true
 
-# MySQL Databases and users. If 'install_site' is 'true', first database will
-# be used for the site.
+# MySQL databases and users.
 mysql_databases:
-  - name: "{{ drupal_mysql_database }}"
+  - name: "{{ drupal_db_name }}"
     encoding: utf8mb4
     collation: utf8mb4_general_ci
 
 mysql_users:
-  - name: "{{ drupal_mysql_user }}"
+  - name: "{{ drupal_db_user }}"
     host: "%"
-    password: "{{ drupal_mysql_password }}"
-    priv: "{{ drupal_mysql_database }}.*:ALL"
+    password: "{{ drupal_db_password }}"
+    priv: "{{ drupal_db_name }}.*:ALL"
+
+# PostgreSQL databases and users.
+postgresql_databases:
+  - name: "{{ drupal_db_name }}"
+
+postgresql_users:
+  - name: "{{ drupal_db_user }}"
+    password: "{{ drupal_db_password }}"
+    db: "{{ drupal_db_name }}"
+    priv: "ALL"
 
 # Comment out any extra utilities you don't want to install. If you don't want
-# to install *any* extras, make set this value to an empty set, e.g. `[]`.
+# to install *any* extras, set this value to an empty set, e.g. `[]`.
 installed_extras:
   - adminer
   # - blackfire
   - drupalconsole
+  - drush
   # - elasticsearch
+  # - java
   - mailhog
   # - memcached
   # - newrelic
@@ -196,7 +215,7 @@ extra_packages:
 # You can configure almost anything else on the server in the rest of this file.
 extra_security_enabled: false
 
-drush_version: "master"
+drush_version: "8.x"
 drush_keep_updated: true
 drush_composer_cli_options: "--prefer-dist --no-interaction"
 
@@ -285,12 +304,12 @@ php_xdebug_idekey: PHPSTORM
 php_xdebug_max_nesting_level: 256
 
 # Solr Configuration (if enabled above).
-solr_version: "5.5.2"
+solr_version: "5.5.3"
 solr_xms: "64M"
 solr_xmx: "128M"
 
 # Selenium configuration.
-selenium_version: 2.46.0
+selenium_version: 2.53.0
 
 # Other configuration.
 dashboard_install_dir: /var/www/dashboard

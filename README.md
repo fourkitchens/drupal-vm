@@ -8,9 +8,9 @@ This project aims to make spinning up a simple local Drupal test/development env
 
 It will install the following on an Ubuntu 16.04 (by default) linux VM:
 
-  - Apache 2.4.x (or Nginx 1.x)
+  - Apache 2.4.x (or Nginx)
   - PHP 7.0.x (configurable)
-  - MySQL 5.7.x
+  - MySQL 5.7.x (or MariaDB, or PostgreSQL)
   - Drush (configurable)
   - Drupal 7.x, or 8.x.x (configurable)
   - Optional:
@@ -68,13 +68,13 @@ But Drupal VM allows you to build your site exactly how you like, using whatever
 
 Download and install [Vagrant](https://www.vagrantup.com/downloads.html) and [VirtualBox](https://www.virtualbox.org/wiki/Downloads).
 
-You can also use an alternative provider like Parallels or VMware, (the latter also requires the paid [Vagrant VMware integration plugin](http://www.vagrantup.com/vmware)).
+You can also use an alternative provider like Parallels or VMware. (Parallels Desktop 11+ requires the "Pro" or "Business" edition and the [Parallels Provider](http://parallels.github.io/vagrant-parallels/), and VMware requires the paid [Vagrant VMware integration plugin](http://www.vagrantup.com/vmware)).
 
 Notes:
 
   - **For faster provisioning** (macOS/Linux only): *[Install Ansible](http://docs.ansible.com/intro_installation.html) on your host machine, so Drupal VM can run the provisioning steps locally instead of inside the VM.*
   - **NFS on Linux**: *If NFS is not already installed on your host, you will need to install it to use the default NFS synced folder configuration. See guides for [Debian/Ubuntu](https://www.digitalocean.com/community/tutorials/how-to-set-up-an-nfs-mount-on-ubuntu-14-04), [Arch](https://wiki.archlinux.org/index.php/NFS#Installation), and [RHEL/CentOS](https://www.digitalocean.com/community/tutorials/how-to-set-up-an-nfs-mount-on-centos-6).*
-  - **Versions**: *Make sure you're running the latest releases of Vagrant, VirtualBox, and Ansible—as of February 2016, Drupal VM recommends: Vagrant 1.8.5, VirtualBox 5.1.2, and Ansible 2.1.0.*
+  - **Versions**: *Make sure you're running the latest releases of Vagrant, VirtualBox, and Ansible—as of late 2016, Drupal VM recommends: Vagrant 1.8.6, VirtualBox 5.1.10+, and Ansible 2.2.x*
 
 ### 2 - Build the Virtual Machine
 
@@ -103,6 +103,9 @@ By default, this VM includes the extras listed in the `config.yml` option `insta
       - adminer
       # - blackfire
       - drupalconsole
+      - drush
+      # - elasticsearch
+      # - java
       - mailhog
       # - memcached
       # - newrelic
